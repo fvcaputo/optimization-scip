@@ -45,7 +45,11 @@ int main() {
     for (int j = 0; j < h; j++) {
         for (int i = 0; i < w; i++) {
             for (int k = 0; k < g; k++) {
-                branches[j][i].push_back(mip.binary_variable(1));
+                if (i != groupi[k] && j != groupj[k]) {
+                    branches[j][i].push_back(NullVariable());
+                } else {
+                    branches[j][i].push_back(mip.binary_variable(1));
+                }
             }
         }
     }
@@ -84,19 +88,7 @@ int main() {
 
         cons.commit(groupValue[a], groupValue[a]);
     }
-/*
-    for (int k = 0; k < g; k++) {
-        auto cons = mip.constraint(); // for each group
-        for (int j = 0; j < h; j++) {
-            for (int i = 0; i < w; i++) {
-                if (board[j][i] == '.') {
-                    cons.add_variable(branches[j][i][k], 1);
-                }
-            }
-        }
-        cons.commit(groupValue[k], groupValue[k]);
-    }
-*/
+
     // Restrictions for rows and columns not in a "cross" for each group
     for (int k = 0; k < g; k++) {
         auto cons = mip.constraint();
@@ -125,26 +117,20 @@ int main() {
         for (int k = 0; k < 4; k++) {
             int jj = j + dy[k], ii = i + dx[k];
 
-            // if we are already at an impossible location, go to next k
-            if (!valid(ii, jj, w, h) || board[jj][ii] != '.') {
-                continue;
-            }
-
             // each step is a constraint
             // go to the last possible path!
             int step = 1; // we already walked
-            for (; step < groupValue[a]; step++) {
+            while (step < groupValue[a]) {
                 jj += dy[k];
                 ii += dx[k];
+                step++;
                 if (!valid(ii, jj, w, h) || board[jj][ii] != '.') {
                     jj -= dy[k];
                     ii -= dx[k];
+                    step--;
                     break;
                 }
             }
-
-            //cout << "I'm here! 10 - steps: " << step << " groupValue: " << groupValue[a] << endl;
-            //cout << "jj: " << jj << " ii: " << ii << endl;
 
             // lets walk back
             while (step > 1) {
@@ -155,45 +141,50 @@ int main() {
                 int auxstep = step-1;
 
                 cons.add_variable(branches[auxj][auxi][a], -auxstep);
-                //cout << "-auxstep: " << -auxstep << " auxi " << auxi << " auxj " << auxj << endl;
                 while (auxstep > 0) {
                     auxstep--;
                     auxi -= dx[k];
                     auxj -= dy[k];
-
-                    //cout << "auxstep: " << auxstep << " auxi " << auxi << " auxj " << auxj << endl;
                     cons.add_variable(branches[auxj][auxi][a], 1);
                 }
-                //cout << "step-1: " << step-1 << endl;
                 cons.commit(0, step-1);
 
                 jj -= dy[k];
                 ii -= dx[k];
                 step--;
             }
-
-            // one is a special case
-            //if (step == 1) {
-                auto cons = mip.constraint();
-                cons.add_variable(branches[jj][ii][a], 1);
-                cons.commit(0, 1);
-            //}
         }
     }
 
     // Solve and print.
     auto sol = mip.solve();
 
-    for (int k = 0; k < g; k++) {
-        for (int j = 0; j < h; j++) {
-            for (int i = 0; i < w; i++) {
-                if (sol.value(branches[j][i][k]) > 0.5) {
-                    cout << '*';
-                } else {
-                    cout << board[j][i];
+    vector<vector<char>> out(h, vector<char>(w, '.'));
+    for (int j = 0; j < h; j++) {
+        for (int i = 0; i < w; i++) {
+            for (int k = 0; k < g; k++) {
+                if (sol.value(branches[j][i][k]) < 0.5) {
+                    continue;
                 }
+                int ii = groupi[k];
+                int jj = groupj[k];
+                for (int xi = min(i, ii); xi <= max(i, ii); xi++) {
+                    for (int xj = min(j, jj); xj <= max(j, jj); xj++) {
+                        out[xj][xi] = xi == ii ? '|' : '-';
+                    }
+                }
+                out[j][i] = i < ii ? '<' : (
+                            i > ii ? '>' : (
+                            j < jj ? '^' : 'v'));
             }
-            cout << endl;
+        }
+    }
+    for (int k = 0; k < g; k++) {
+        out[groupj[k]][groupi[k]] = '0' + groupValue[k];
+    }
+    for (int j = 0; j < h; j++) {
+        for (int i = 0; i < w; i++) {
+            cout << out[j][i];
         }
         cout << endl;
     }
