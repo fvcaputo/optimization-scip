@@ -1,4 +1,4 @@
-PUZZLES = branches
+PUZZLES = branches agents
 OPT = -m64 -mtune=native -fomit-frame-pointer -O3 -Wall -g
 all : $(PUZZLES)
 
