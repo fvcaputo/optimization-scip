@@ -5,7 +5,7 @@
 using namespace std;
 using namespace easyscip;
 
-#define DEBUG 1
+#define DEBUG 1 // set to 0 to remove prints
 
 struct Agent {
     int relative_index;
@@ -111,6 +111,7 @@ int main() {
     //        va[-][-][0] and va[-][-][1] -> destinations are the agents houses
     //        va[-][-][2] -> destination is first visit
     //     this means the first values will represent agents houses (both in origin and destination)
+    //     so we will use "relative_index" from our objects to deal with that
 
     int totalNumPlaces = numAgents + numVisits; // numAgents == number of agents houses
     vector<vector<vector<Variable>>> va(numAgents, vector<vector<Variable>>(totalNumPlaces));
@@ -170,8 +171,6 @@ int main() {
 
     // Restriction considering visits as destination
     // visits will either not happen (canceled) or at most one agent will participate
-    // destination starts at numAgents because of our modeling
-    // (if 2 agents, av[-][-][2] -> destination == first visit)
     for (Visit vd : visits) {
         int destination = vd.relative_index;
         auto cons = mip.constraint();
@@ -181,7 +180,7 @@ int main() {
             cons.add_variable(va[agent][agent][destination], 1); // case when origin = agent house, already add
             for (Visit vo : visits) {
                 int origin = vo.relative_index;
-                if (vo.slot < vd.slot) { // only an actual constraint if destination is after origin (origin == destination -> slot == slot, so this also guards against it)
+                if (vo.slot < vd.slot) { // only consider if destination is after origin (origin == destination -> slot == slot, so this also guards against it)
                     cons.add_variable(va[agent][origin][destination], 1);
                 }
             }
@@ -227,8 +226,10 @@ int main() {
     // Restriction considering number of visits on each slot (cant be more than number of available agents)
     // At most cant be more than the number of agents so <= numAgents
     // At mininum it's min(totalVisitsInSlot, numAgents) because:
-    //    - if in slot we have more visits than the number of agents, then the minimum visits that happen is the number of agents (7 visits, 5 agents -> 5 visits happen)
-    //    - if in slot we have less visits than the number of agents, then the minimum visits that happen is the number of visits (3 visits, 5 agents -> 3 visits happen)
+    //    - if in slot we have more visits than the number of agents,
+    //      then the minimum visits that happen is the number of agents (7 visits, 5 agents -> 5 visits happen)
+    //    - if in slot we have less visits than the number of agents,
+    //      then the minimum visits that happen is the number of visits (3 visits, 5 agents -> 3 visits happen)
     for (auto visitSlot : visitsBySlot) {
         vector<Visit> visitsInSlot = visitSlot.second;
         int totalVisitsInSlot = visitsInSlot.size();
@@ -241,7 +242,7 @@ int main() {
                 cons.add_variable(va[agent][agent][destination], 1); // case when origin = agent house, already add
                 for (Visit vo : visits) {
                     int origin = vo.relative_index;
-                    if (vo.slot < vd.slot) { // only an actual constraint if destination is after origin (origin == destination -> slot == slot, so this also guards against it)
+                    if (vo.slot < vd.slot) { // only consider if destination is after origin (origin == destination -> slot == slot, so this also guards against it)
                         cons.add_variable(va[agent][origin][destination], 1);
                     }
                 }
@@ -250,7 +251,8 @@ int main() {
         cons.commit(min(totalVisitsInSlot, numAgents), numAgents);
     }
 
-    // Restriction because we can only have less than 5% visits "canceled" -> that will have va[agent][origin][destination] = 0
+    // Restriction because we can only have less than 5% visits "canceled"
+    //     -> that will have va[agent][origin][destination] = 0
     // here I describe it the oposite way, if only less than 5% can be canceled
     // then we know the ones that will happen are between 95% and 100%
     int totalNumVisitors = 0;
@@ -269,7 +271,7 @@ int main() {
             cons.add_variable(va[agent][agent][destination], visitors); // case when origin = agent house, already add
             for (Visit vo : visits) {
                 int origin = vo.relative_index;
-                if (vo.slot < vd.slot) { // only an actual constraint if destination is after origin (origin == destination -> slot == slot, so this also guards against it)
+                if (vo.slot < vd.slot) { // only consider if destination is after origin (origin == destination -> slot == slot, so this also guards against it)
                     cons.add_variable(va[agent][origin][destination], visitors);
                 }
             }
