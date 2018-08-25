@@ -29,16 +29,17 @@ double distance(double x0, double y0, double x1, double y1) {
 }
 
 void printData(vector<Agent> agents, vector<Visit> visits) {
+    int i = 0;
     cout << "::::: Data read from file: " << endl << endl;
 
     for (Agent a : agents) {
-        cout << "Agent relative_index: " << a.relative_index << " x: " << a.x << " y: " << a.y << endl;
+        cout << "Agent " << i++ << ", relative_index: " << a.relative_index << " x: " << a.x << " y: " << a.y << endl;
     }
 
+    i = 0;
     cout << endl;
-
     for (Visit v : visits) {
-        cout << "Visit relative_index: " << v.relative_index << " slot: " << v.slot << " x: " << v.x << " y: " << v.y << " pool_size: " << v.pool_size << endl;
+        cout << "Visit " << i++ << ", relative_index: " << v.relative_index << " slot: " << v.slot << " x: " << v.x << " y: " << v.y << " pool_size: " << v.pool_size << endl;
     }
 
     cout << endl;
@@ -321,13 +322,28 @@ int main() {
     }
 
     // Solve and print
+    mip.set_time_limit(300); // 5 minutes
     auto sol = mip.solve();
+
+    cout << endl;
     for (int agent = 0; agent < numAgents; ++agent) {
-        cout << "Agent " << agent << endl;
+        cout << "Agent " << agent << " (House " << agent << ")" << endl;
         for (int origin = 0; origin < totalNumPlaces; ++origin) {
             for (int destination = 0; destination < totalNumPlaces; ++destination) {
                 if (sol.value(va[agent][origin][destination]) > 0.5) {
-                    cout << "Went from " << origin << " to " << destination << endl;
+                    cout << "Went from ";
+                    if (origin < numAgents) {
+                        cout << "House " << origin;
+                    } else {
+                        cout << "Visit " << origin - numAgents;
+                    }
+                    cout << " to ";
+                    if (destination < numAgents) {
+                        cout << "House " << destination;
+                    } else {
+                        cout << "Visit " << destination - numAgents;
+                    }
+                    cout << endl;
                 }
             }
         }
