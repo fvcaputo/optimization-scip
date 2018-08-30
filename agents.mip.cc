@@ -296,7 +296,7 @@ int main() {
             }
             cons.add_variable(va[agent][origin][destination], 1);
         }
-        cons.commit(1, 1);
+        cons.commit(0, 1); // can be 0 -> agent never left (no need, less visits than agents)
     }
 
     // Restrictions about how every agent MUST end at home
@@ -318,7 +318,7 @@ int main() {
             }
             cons.add_variable(va[agent][origin][destination], 1);
         }
-        cons.commit(1, 1);
+        cons.commit(0, 1); // can be 0 -> agent never left (no need, less visits than agents)
     }
 
     // Solve and print
